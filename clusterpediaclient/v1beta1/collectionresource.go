@@ -18,7 +18,9 @@ package v1beta1
 
 import (
 	"context"
+	"log/slog"
 	"net/http"
+	"net/url"
 	"time"
 
 	clusterpediav1beta1 "github.com/clusterpedia-io/api/clusterpedia/v1beta1"
@@ -30,13 +32,15 @@ import (
 
 type ClusterPediaV1beta1 interface {
 	CollectionResource() CollectionResourceInterface
+	Debug() ClusterPediaV1beta1
 }
 
 type ClusterPediaV1beta1Client struct {
 	restClient rest.Interface
+	openDebug  bool
 }
 
-// New creates a new CoreV1Client for the given RESTClient.
+// NewForConfig creates a new CoreV1Client for the given RESTClient.
 func NewForConfig(c *rest.Config) (*ClusterPediaV1beta1Client, error) {
 	config := *c
 	if err := setConfigDefaults(&config); err != nil {
@@ -58,7 +62,7 @@ func NewForConfigAndClient(c *rest.Config, h *http.Client) (*ClusterPediaV1beta1
 	if err != nil {
 		return nil, err
 	}
-	return &ClusterPediaV1beta1Client{client}, nil
+	return &ClusterPediaV1beta1Client{restClient: client}, nil
 }
 
 func setConfigDefaults(config *rest.Config) error {
@@ -75,7 +79,12 @@ func setConfigDefaults(config *rest.Config) error {
 }
 
 func (c *ClusterPediaV1beta1Client) CollectionResource() CollectionResourceInterface {
-	return &CollectionResource{c.restClient}
+	return &CollectionResource{client: c.restClient, openDebug: c.openDebug}
+}
+
+func (c *ClusterPediaV1beta1Client) Debug() ClusterPediaV1beta1 {
+	c.openDebug = true
+	return c
 }
 
 type CollectionResourceInterface interface {
@@ -85,17 +94,23 @@ type CollectionResourceInterface interface {
 }
 
 type CollectionResource struct {
-	client rest.Interface
+	client    rest.Interface
+	openDebug bool
 }
 
 func (c *CollectionResource) Get(ctx context.Context, name string, opts metav1.GetOptions) (result *clusterpediav1beta1.CollectionResource, err error) {
 	result = &clusterpediav1beta1.CollectionResource{}
-	err = c.client.Get().
+	request := c.client.Get().
 		Resource("collectionresources").
 		Name(name).
-		VersionedParams(&opts, scheme.ParameterCodec).
-		Do(ctx).
-		Into(result)
+		VersionedParams(&opts, scheme.ParameterCodec)
+
+	if c.openDebug {
+		unescape, _ := url.QueryUnescape(request.URL().String())
+		slog.Debug("CollectionResource.Get", slog.String("req.URL", unescape))
+	}
+
+	err = request.Do(ctx).Into(result)
 	return
 }
 
@@ -105,12 +120,17 @@ func (c *CollectionResource) List(ctx context.Context, opts metav1.ListOptions) 
 		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
 	}
 	result = &clusterpediav1beta1.CollectionResourceList{}
-	err = c.client.Get().
+	req := c.client.Get().
 		Resource("collectionresources").
 		VersionedParams(&opts, scheme.ParameterCodec).
-		Timeout(timeout).
-		Do(ctx).
-		Into(result)
+		Timeout(timeout)
+
+	if c.openDebug {
+		unescape, _ := url.QueryUnescape(req.URL().String())
+		slog.Debug("CollectionResource.List", slog.String("req.URL", unescape))
+	}
+
+	err = req.Do(ctx).Into(result)
 	return
 }
 
@@ -122,6 +142,11 @@ func (c *CollectionResource) Fetch(ctx context.Context, name string, opts metav1
 
 	for p, v := range params {
 		request.Param(p, v)
+	}
+
+	if c.openDebug {
+		unescape, _ := url.QueryUnescape(request.URL().String())
+		slog.Debug("CollectionResource.Fetch", slog.String("req.URL", unescape))
 	}
 
 	result = &clusterpediav1beta1.CollectionResource{}

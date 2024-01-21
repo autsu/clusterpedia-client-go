@@ -20,12 +20,16 @@ import (
 	"context"
 	"fmt"
 
-	appsv1 "k8s.io/api/apps/v1"
-	corev1 "k8s.io/api/core/v1"
-
 	pedia "github.com/clusterpedia-io/client-go/client"
 	"github.com/clusterpedia-io/client-go/tools/builder"
+
+	appsv1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
+
+// TODO: 不知道这个 client 是干嘛用的
 
 func main() {
 	c, err := pedia.Client()
@@ -35,10 +39,10 @@ func main() {
 
 	// build listOptions
 	options := builder.ListOptionsBuilder().
-		Clusters("cluster-01").
-		Namespaces("kube-system").
-		Offset(10).Limit(5).
-		OrderBy("dsad", false).
+		Clusters("k3s1").
+		Namespaces(metav1.NamespaceDefault).
+		Offset(0).Limit(5).
+		//OrderBy("dsad", false).
 		Build()
 
 	pods := &corev1.PodList{}
@@ -48,8 +52,18 @@ func main() {
 	}
 
 	for _, item := range pods.Items {
-		fmt.Printf("Pod info: %v\n", item)
+		//fmt.Printf("Pod info: %v\n", item)
+		fmt.Printf("namespace/name: %v/%v\n", item.Namespace, item.Name)
 	}
+
+	pod := &corev1.Pod{}
+	if err := c.Get(context.TODO(), client.ObjectKey{
+		Namespace: metav1.NamespaceDefault,
+		Name:      "my-daemonset-6gwjp",
+	}, pod); err != nil {
+		panic(err)
+	}
+	fmt.Printf("%+v\n", pod)
 
 	deploys := &appsv1.DeploymentList{}
 	err = c.List(context.TODO(), deploys, options)
@@ -58,6 +72,6 @@ func main() {
 	}
 
 	for _, item := range deploys.Items {
-		fmt.Printf("Deployment info: %v\n", item)
+		fmt.Printf("Deployment info: %v\n", item.Name)
 	}
 }

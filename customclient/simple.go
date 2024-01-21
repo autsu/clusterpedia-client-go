@@ -18,7 +18,9 @@ package customclient
 
 import (
 	"context"
+	"log/slog"
 	"net/http"
+	"net/url"
 
 	"github.com/clusterpedia-io/client-go/client"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -75,14 +77,21 @@ type restResourceClient struct {
 	client    *restClient
 	namespace string
 	resource  schema.GroupVersionResource
+	openDebug bool
 }
 
 type restClient struct {
-	client *rest.RESTClient
+	client    *rest.RESTClient
+	openDebug bool
+}
+
+func (c *restClient) Debug() Interface {
+	c.openDebug = true
+	return c
 }
 
 func (c *restClient) Resource(resource schema.GroupVersionResource) NamespaceableResourceInterface {
-	return &restResourceClient{client: c, resource: resource}
+	return &restResourceClient{client: c, resource: resource, openDebug: c.openDebug}
 }
 
 func (c *restResourceClient) Namespace(ns string) ResourceInterface {
@@ -96,6 +105,11 @@ func (c *restResourceClient) List(ctx context.Context, opts metav1.ListOptions, 
 	req.AbsPath(c.makeURLSegments("")...).SpecificallyVersionedParams(&opts, parameterCodec, versionV1)
 	for key, value := range params {
 		req.Param(key, value)
+	}
+
+	if c.openDebug {
+		unescape, _ := url.QueryUnescape(req.URL().String())
+		slog.Debug("", slog.String("req.URL", unescape))
 	}
 	return req.Do(ctx).Into(obj)
 }

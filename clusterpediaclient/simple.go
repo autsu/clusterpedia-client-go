@@ -25,16 +25,16 @@ import (
 	"k8s.io/client-go/util/flowcontrol"
 )
 
-type clusterpediaClient struct {
+type ClusterpediaClient struct {
 	pediaClusterClient *v1beta1.ClusterPediaV1beta1Client
 }
 
 // AppsV1beta1 retrieves the  PediaClusterV1beta1
-func (c *clusterpediaClient) PediaClusterV1beta1() v1beta1.ClusterPediaV1beta1 {
+func (c *ClusterpediaClient) PediaClusterV1beta1() v1beta1.ClusterPediaV1beta1 {
 	return c.pediaClusterClient
 }
 
-func NewForConfig(cfg *rest.Config) (*clusterpediaClient, error) {
+func NewForConfig(cfg *rest.Config) (*ClusterpediaClient, error) {
 	configShallowCopy := cfg
 	if configShallowCopy.RateLimiter == nil && configShallowCopy.QPS > 0 {
 		if configShallowCopy.Burst <= 0 {
@@ -44,7 +44,7 @@ func NewForConfig(cfg *rest.Config) (*clusterpediaClient, error) {
 	}
 
 	var err error
-	var cc clusterpediaClient
+	var cc ClusterpediaClient
 	cc.pediaClusterClient, err = v1beta1.NewForConfig(configShallowCopy)
 	if err != nil {
 		return nil, err
