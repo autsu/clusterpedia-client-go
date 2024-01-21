@@ -26,6 +26,8 @@ import (
 
 type Interface interface {
 	Resource(resource schema.GroupVersionResource) NamespaceableResourceInterface
+	// Debug 会输出请求的 HTTP URL
+	Debug() Interface
 }
 
 type ResourceInterface interface {
